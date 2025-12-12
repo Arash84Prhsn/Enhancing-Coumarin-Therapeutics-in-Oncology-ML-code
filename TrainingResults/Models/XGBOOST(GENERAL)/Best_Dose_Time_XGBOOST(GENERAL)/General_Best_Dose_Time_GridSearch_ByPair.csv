@@ -1,0 +1,29 @@
+Coumarin,Cancer Type,Best Dose,Best Time,Predicted Viability
+Auraptene,Prostate,110.0,24.0,49.98569
+Auraptene,Leukemia/Lymphoma,164.0,48.0,49.784733
+Auraptene,Breast,225.0,24.0,50.04828
+Auraptene,Colon,80.0,24.0,50.081825
+Auraptene,Gastric,157.0,24.0,50.013126
+Auraptene,Lung,137.0,72.0,49.998337
+Auraptene,Pancreatic,50.0,48.0,49.941708
+Esculetin,Prostate,234.0,72.0,49.828342
+Esculetin,Leukemia/Lymphoma,21.0,48.0,49.922447
+Esculetin,Breast,69.0,48.0,49.877247
+Esculetin,Colon,157.0,24.0,49.880413
+Esculetin,Gastric,41.0,72.0,49.911476
+Esculetin,Lung,104.0,48.0,49.976986
+Esculetin,Pancreatic,60.0,72.0,50.026207
+Galbanic Acid,Prostate,100.0,48.0,49.991737
+Galbanic Acid,Leukemia/Lymphoma,273.0,24.0,50.111362
+Galbanic Acid,Breast,80.0,72.0,50.173717
+Galbanic Acid,Colon,208.0,24.0,50.273678
+Galbanic Acid,Gastric,176.0,24.0,50.02626
+Galbanic Acid,Lung,134.0,72.0,50.22223
+Galbanic Acid,Pancreatic,113.0,48.0,50.198154
+Umbelliprenin,Prostate,280.0,72.0,50.070095
+Umbelliprenin,Leukemia/Lymphoma,120.0,72.0,49.706017
+Umbelliprenin,Breast,230.0,48.0,49.506733
+Umbelliprenin,Colon,169.0,24.0,49.56991
+Umbelliprenin,Gastric,7.0,72.0,49.844944
+Umbelliprenin,Lung,80.0,48.0,49.83912
+Umbelliprenin,Pancreatic,110.0,48.0,50.0035

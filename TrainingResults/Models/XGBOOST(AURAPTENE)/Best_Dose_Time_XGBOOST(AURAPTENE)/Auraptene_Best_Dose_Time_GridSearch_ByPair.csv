@@ -1,0 +1,6 @@
+Coumarin,Cancer Type,Best Dose,Best Time,Predicted Viability
+Auraptene,Prostate,270.0,48.0,50.56612
+Auraptene,Leukemia/Lymphoma,80.0,96.0,49.193874
+Auraptene,Breast,208.0,72.0,50.021343
+Auraptene,Colon,50.0,48.0,49.964077
+Auraptene,Gastric,250.0,48.0,49.988903

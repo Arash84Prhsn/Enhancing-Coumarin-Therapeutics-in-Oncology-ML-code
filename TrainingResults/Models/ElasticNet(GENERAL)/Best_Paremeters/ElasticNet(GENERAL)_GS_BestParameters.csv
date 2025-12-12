@@ -1,0 +1,2 @@
+alpha,fit_intercept,l1_ratio,max_iter,selection,R2
+1.0,True,0.9,1000,cyclic,0.21675421933738384

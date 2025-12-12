@@ -1,0 +1,9 @@
+Coumarin,Cancer Type,Best Dose,Best Time,Predicted Viability
+Esculetin,Pancreatic,44.0,48.0,50.099809285714265
+Esculetin,Oral,64.0,48.0,50.00763124731991
+Esculetin,Colon,107.0,24.0,50.168252530525
+Esculetin,Renal,73.0,72.0,49.76704754148629
+Esculetin,Lung,22.0,48.0,49.978200628815564
+Esculetin,Gastric,88.0,72.0,49.7611389718615
+Esculetin,Prostate,226.0,48.0,49.754209425954826
+Esculetin,Skin,132.0,48.0,49.28787338203463

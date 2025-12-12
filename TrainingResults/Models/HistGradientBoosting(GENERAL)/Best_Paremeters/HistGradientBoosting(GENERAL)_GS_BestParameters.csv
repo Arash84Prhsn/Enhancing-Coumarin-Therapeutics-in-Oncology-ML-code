@@ -1,0 +1,2 @@
+l2_regularization,learning_rate,loss,max_depth,max_leaf_nodes,min_samples_leaf,R2
+0.5,0.07,squared_error,7,31,5,0.6454805126024238

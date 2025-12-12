@@ -1,0 +1,2 @@
+alpha,fit_intercept,l1_ratio,max_iter,selection,R2
+10.0,True,0.5,1000,random,0.20981722566770883
