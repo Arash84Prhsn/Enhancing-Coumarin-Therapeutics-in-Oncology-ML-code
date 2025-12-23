@@ -1,2 +1,0 @@
-alpha,fit_intercept,max_iter,solver,tol,R2
-0.001,True,5000,sag,0.1,0.5527218163958952

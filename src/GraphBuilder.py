@@ -26,19 +26,16 @@ dot = Digraph(
 
 # === Nodes (high-level only) ===
 dot.node("Load", "Load Dataset")
-dot.node(
-    "Pre-processing",
-    "Pre-processing"
-)
+dot.node("Pre-processing", "Pre-processing")
 dot.node("GridSearching", "HyperParameter fine tuning")
 dot.node("Evaluation", "5-Fold cross-evaluation")
-dot.node("Predict", "Predict viability")
+dot.node("Train", "Predict viability")
 
 # === Edges ===
 dot.edge("Load", "Pre-processing")
 dot.edge("Pre-processing", "GridSearching")
 dot.edge("GridSearching", "Evaluation")
-dot.edge("Evaluation", "Predict")
+dot.edge("Evaluation", "Train")
 
 # === Render ===
 output_path = "/home/arashp/Programming_Files/ML_Paper/Plots/workFlow"

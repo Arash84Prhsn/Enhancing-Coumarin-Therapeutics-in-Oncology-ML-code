@@ -1,2 +1,0 @@
-max_depth,max_features,min_samples_leaf,min_samples_split,n_estimators,R2
-10,sqrt,1,5,200,0.582460723549646

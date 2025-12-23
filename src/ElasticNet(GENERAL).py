@@ -406,14 +406,29 @@ def predict_viability(model, cancer_type, coumarin_type, dose, time,
 predicted_viability = predict_viability(
     model=model,
     cancer_type="Colon",
-    coumarin_type="Auraptene", 
-    dose=75,                    # dose value
+    coumarin_type="Galbanic Acid", 
+    dose=240,                    # dose value
     time=48,                    # time value
     cancer_encoder=general_CancerType_Encoder,
     coumarin_encoder=general_CoumarinType_Encoder
 )
 
-print(f"{CURRENT_MODEL} Predicted Viability: {predicted_viability:.2f}")
+# print(f"{CURRENT_MODEL} Predicted Viability: {predicted_viability:.2f}")
+doses = [91, 75, 71];
+times = [24,48,72];
+
+for d, t in zip(doses, times) :
+    predicted_viability = predict_viability(
+    model=model,
+    cancer_type="Colon",        # example cancer type
+    coumarin_type="Auraptene", # example coumarin
+    dose=d,                    # dose value
+    time=t,                    # time value
+    cancer_encoder=general_CancerType_Encoder,
+    coumarin_encoder=general_CoumarinType_Encoder
+    )
+    print(f"Predicted Viability with Dose {d} at time {t} is: {predicted_viability}");
+
 
 from joblib import dump
 os.makedirs(f"{RESULT_DIR}/ModelFile/", exist_ok=True);

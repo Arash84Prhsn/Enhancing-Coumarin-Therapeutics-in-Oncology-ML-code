@@ -1,2 +1,2 @@
 learning_rate,max_depth,max_features,n_estimators,subsample,R2
-0.05,4,,300,0.85,0.5789928690831114
+0.1,4,sqrt,300,0.7,0.6551689241551658

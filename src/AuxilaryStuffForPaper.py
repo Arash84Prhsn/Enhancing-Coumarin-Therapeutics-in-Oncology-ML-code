@@ -466,10 +466,10 @@ for ax, model, name in zip(axes, models, model_names):
     importances = r.importances_mean
     indices = np.argsort(importances)
 
-    ax.barh(range(len(importances)), importances[indices])
-    ax.set_yticks(range(len(importances)))
-    ax.set_yticklabels(feature_names[indices], fontsize=7)
-    ax.set_title(f"Permutation feature importances ({name})", fontsize=9)
+    ax.bar(range(len(importances)), importances[indices], color = "#585858")
+    ax.set_xticks(range(len(importances)))
+    ax.set_xticklabels(feature_names[indices], fontsize=7)
+    ax.set_title(f"{name}", fontsize=9)
 
 plt.subplots_adjust(hspace=0.25, wspace=0.25)
 plt.tight_layout()

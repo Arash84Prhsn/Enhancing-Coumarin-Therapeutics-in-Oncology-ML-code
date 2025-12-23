@@ -1,24 +1,14 @@
-# THINGS TO MODIFY ARE :
-# 1. CURRENT_MODEL
-# 2. CURRENT_COUMARIN (in case we are doing training on separate coumarins, leave it as None if doing General training)
-# 3. SEPARATE_COUMARINS (True if we are doing training on separate coumarins)
-# 4. DO_GRIDSEARCH (True if we want to gridSearch, False we are doing training and predicting)
-# 5. X and y
-# 6. gs_Estimator (the estimator of the gridSearching)
-# 7. gs_parameters
-# 8. model (Must be given **params as argument
-# THIS SHOULD COVER DIFFERENT CASES AND DIFFERENT MODEL TRAININGS
+
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import (RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor)
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import KFold, cross_val_score, GridSearchCV
 from sklearn.preprocessing import LabelEncoder
 from sklearn.mixture import GaussianMixture
-from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, r2_score, make_scorer
+from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, make_scorer
 import os
 import sys
 import matplotlib.pyplot as plt
-import itertools
 
 # Please Change the paths to match your own enviroment.
 DATA_PATH = 'Total_Data.csv'
@@ -26,8 +16,6 @@ DATA_PATH = 'Total_Data.csv'
 # Change model name here. MAKE THE NAME SAME AS THE CONSTRUCTOR(e.g. GradientBoostingRegressor, RandomForestRegressor, ...)
 # Also in case you're doing training on different coumarins, the name the model as the following example: "RandomForestRegressor(AURAPTENE)"
 CURRENT_MODEL = "GradientBoostingRegressor(GENERAL)";
-CURRENT_COUMARIN = None
-SEPARATE_COUMARINS = False
 
 # RESULT_DIR = f'/TrainingResults/Models/{CURRENT_MODEL}/'
 RESULT_DIR = os.path.join(os.getcwd(), f'TrainingResults/Models/{CURRENT_MODEL}/')
@@ -41,8 +29,6 @@ allowed_times_NoAuraptene = [24, 48, 72]
 allowed_times_ForAuraptene = [24, 48, 72, 96]
 
 coumarins = ['Auraptene', 'Esculetin', 'Galbanic Acid', 'Umbelliprenin'];
-separateCoumarinDataDict = {"Auraptene" : None, "Esculetin" : None, 
-                            "Glabanic Acid" : None, "Umbelliprenin" : None};
 
 # ===========================================================================================================
 # Filtering the data using GMM for all Coumarins and the overall data itself and saving them in the dict
@@ -78,45 +64,6 @@ general_Data = general_Data[
     ((general_Data['Coumarin Type'] == 'Auraptene') & general_Data['Time'].isin(allowed_times_ForAuraptene)) |
     ((general_Data['Coumarin Type'] != 'Auraptene') & general_Data['Time'].isin(allowed_times_NoAuraptene))
 ]
-
-# We shall save each encoder of different coumarin type in case we need it in future for decoding
-Encoders = {"Auraptene" : None, "Esculetin" : None, 
-            "Glabanic Acid" : None, "Umbelliprenin" : None};
-
-# Now filter the data for seperate coumarins:===============================================================================================
-for coumarin in coumarins :
-
-    if coumarin != "Auraptene" :
-        coumarin_data = mainData[(mainData['Coumarin Type'] == coumarin) & (mainData['Time'].isin(allowed_times_NoAuraptene))].copy()
-    else :
-        coumarin_data = mainData[(mainData['Coumarin Type'] == coumarin) & (mainData['Time'].isin(allowed_times_ForAuraptene))].copy()
-
-    
-    coumarin_data.drop(columns=['Coumarin Type'], inplace=True);
-
-    cancer_counts = coumarin_data['Cancer Type'].value_counts().to_dict()
-    count_df = pd.DataFrame(list(cancer_counts.items()), columns=['Cancer Type', 'Sample Count'])
-
-    gmm.fit(count_df[['Sample Count']])
-    threshold = np.mean(gmm.means_.flatten())
-
-    count_df['Reliability'] = count_df['Sample Count'].apply(
-        lambda x: 'Reliable' if x >= threshold else 'Unreliable'
-    )
-
-    reliable_cancers = count_df[count_df['Reliability'] == 'Reliable']['Cancer Type'].tolist()
-    reliable_data = coumarin_data[coumarin_data['Cancer Type'].isin(reliable_cancers)].copy()
-
-    # Perfom transformation on the Cancer Type column
-    CancerEncoder = LabelEncoder();
-    reliable_data['Cancer Type'] = CancerEncoder.fit_transform(reliable_data['Cancer Type']);
-    
-    # Save the encoder in case we are gonna need it
-    Encoders[coumarin] = CancerEncoder;
-
-    # save the new coumarin data set
-    separateCoumarinDataDict[coumarin] = reliable_data;
-# Done looping through coumarins, we now have the data we need for each case================================================================
 
 # Wether we intend to do grid searching on the model or not is denoted the variable below:
 DO_GRIDSEARCH = False;
@@ -171,14 +118,47 @@ if DO_GRIDSEARCH :
 # Get the model parameters post GridSearching
 params = pd.read_csv(f"{RESULT_DIR}Best_Paremeters/{CURRENT_MODEL}_GS_BestParameters.csv").iloc[0].to_dict();
 
-for key, value in params.items():
-    if pd.isna(value):
-        params[key] = None
+def sanitize_params(estimator, params):
+    """
+    Cleans and fixes parameter types before passing them to sklearn models.
+    - Converts floats representing ints into int
+    - Converts 'None' strings to None
+    - Converts NaN to None
+    - Removes unexpected params
+    """
+    import inspect
 
+    valid_params = estimator().get_params().keys()
+    clean = {}
 
-params['max_depth'] = int(params['max_depth']);
-params['n_estimators'] = int(params['n_estimators']);
+    for key, value in params.items():
+
+        # Skip invalid params
+        if key not in valid_params:
+            continue
+
+        # Convert string 'None' to Python None
+        if isinstance(value, str) and value.strip().lower() == "none":
+            clean[key] = None
+            continue
+
+        # Convert NaN to None
+        if isinstance(value, float) and np.isnan(value):
+            clean[key] = None
+            continue
+
+        # Convert float-like integers to real ints
+        if isinstance(value, float) and value.is_integer():
+            clean[key] = int(value)
+            continue
+
+        # Leave everything else unchanged
+        clean[key] = value
+
+    return clean
+
 params.pop("R2");
+params = sanitize_params(GradientBoostingRegressor, params=params)
 params['random_state'] = 42
 
 # feed the params to model, with random_state as 42
@@ -212,109 +192,6 @@ df.to_csv(f"{RESULT_DIR}Evaluations/{CURRENT_MODEL}_Evaluation_Report.csv",index
 
 # Train the model on our X and y 
 model.fit(X,y)
-
-# # ====<Predict Best Dose and Time for viability 50>====
-
-# doseRange = np.linspace(0, 400, 401)
-
-# pred_Dir = f"{RESULT_DIR}Best_Dose_Time_{CURRENT_MODEL}/";
-# os.makedirs(pred_Dir, exist_ok=True);
-
-
-# # Prepare to store best combinations
-# best_conditions = []
-
-# # ====<Generate all Dose ,Time combinations>====
-# dose_grid, time_grid = np.meshgrid(doseRange, allowed_times_ForAuraptene, indexing='ij')
-# dose_flat = dose_grid.ravel()
-# time_flat = time_grid.ravel()
-
-# if SEPARATE_COUMARINS == False :
-    
-#     # Get unique coumarins and cancer types
-#     coumarins = general_Data['Coumarin Type'].unique()
-#     cancer_types = general_Data['Cancer Type'].unique()
-    
-#     # Loop over each Cancer, Coumarin pairs
-#     for coumarin in coumarins:
-#         for cancer in cancer_types:
-#             # Build DataFrame for this pair
-#             pred_df = pd.DataFrame({
-#                 'Cancer Type': [cancer] * len(dose_flat),
-#                 'Coumarin Type': [coumarin] * len(dose_flat),
-#                 'Coumarin Dose': dose_flat,
-#                 'Time': time_flat
-#             })
-
-#             # Apply Auraptene rule: only Auraptene can have time=96
-#             if coumarin != "Auraptene":
-#                 pred_df = pred_df[pred_df['Time'] != 96]
-
-#             # Predict
-#             preds = model.predict(pred_df)
-
-#             # Find best Dose/Time (closest to 50)
-#             min_idx = np.abs(preds - 50).argmin()
-#             best_row = pred_df.iloc[min_idx]
-
-#             # Decode labels
-#             cancer_decoded = general_CancerType_Encoder.inverse_transform([int(best_row['Cancer Type'])])[0]
-#             coumarin_decoded = general_CoumarinType_Encoder.inverse_transform([int(best_row['Coumarin Type'])])[0]
-
-#             best_conditions.append({
-#                 'Coumarin': coumarin_decoded,
-#                 'Cancer Type': cancer_decoded,
-#                 'Best Dose': best_row['Coumarin Dose'],
-#                 'Best Time': best_row['Time'],
-#                 'Predicted Viability': preds[min_idx]
-#             })
-
-#     # ====<SAVE RESULTS>====
-#     df_best = pd.DataFrame(best_conditions)
-#     df_best.to_csv(f"{pred_Dir}General_Best_Dose_Time_GridSearch_ByPair.csv", index=False)
-
-
-# else :
-
-#     # Get cancer types
-#     cancer_types = separateCoumarinDataDict[CURRENT_COUMARIN]['Cancer Type'].unique()
-    
-#     for coumarin in [CURRENT_COUMARIN]:
-#         for cancer in cancer_types:
-#             # Build DataFrame for this pair
-#             pred_df = pd.DataFrame({
-#                 'Cancer Type': [cancer] * len(dose_flat),
-#                 'Coumarin Dose': dose_flat,
-#                 'Time': time_flat
-#             })
-
-#             # Apply Auraptene rule: only Auraptene can have time=96
-#             if coumarin != "Auraptene":
-#                 pred_df = pred_df[pred_df['Time'] != 96]
-
-#             # Predict
-#             preds = model.predict(pred_df)
-
-#             # Find best Dose/Time (closest to 50)
-#             min_idx = np.abs(preds - 50).argmin()
-#             best_row = pred_df.iloc[min_idx]
-
-#             # Decode labels
-#             cancer_decoded = Encoders[CURRENT_COUMARIN].inverse_transform([int(best_row['Cancer Type'])])[0]
-
-#             best_conditions.append({
-#                 'Coumarin': coumarin,
-#                 'Cancer Type': cancer_decoded,
-#                 'Best Dose': best_row['Coumarin Dose'],
-#                 'Best Time': best_row['Time'],
-#                 'Predicted Viability': preds[min_idx]
-#             })
-
-#     # ====<SAVE RESULTS>====
-#     df_best = pd.DataFrame(best_conditions)
-#     df_best.to_csv(f"{pred_Dir}{coumarin}_Best_Dose_Time_GridSearch_ByPair.csv", index=False)
-
-# print("====<DONE PREDICTING>====")
 
 def predict_viability(model, cancer_type, coumarin_type, dose, time, 
                       cancer_encoder, coumarin_encoder):
@@ -366,15 +243,25 @@ def predict_viability(model, cancer_type, coumarin_type, dose, time,
 predicted_viability = predict_viability(
     model=model,
     cancer_type="Colon",        # example cancer type
-    coumarin_type="Auraptene", # example coumarin
-    dose=75,                    # dose value
+    coumarin_type="Galbanic Acid", # example coumarin
+    dose=240,                   # dose value
     time=72,                    # time value
     cancer_encoder=general_CancerType_Encoder,
     coumarin_encoder=general_CoumarinType_Encoder
 )
 
-print(f"{CURRENT_MODEL}Predicted Viability: {predicted_viability:.2f}")
+print(f"Viability with a dose of 240 (galbanic acid) at 72h time point: {predicted_viability}")
+doses = [91, 75, 71];
+times = [24,48,72];
 
-from joblib import dump
-os.makedirs(f"{RESULT_DIR}/ModelFile/", exist_ok=True);
-dump(model, f"{RESULT_DIR}/ModelFile/{CURRENT_MODEL}.joblib")
+for d, t in zip(doses, times) :
+    predicted_viability = predict_viability(
+    model=model,
+    cancer_type="Colon",        # example cancer type
+    coumarin_type="Auraptene", # example coumarin
+    dose=d,                    # dose value
+    time=t,                    # time value
+    cancer_encoder=general_CancerType_Encoder,
+    coumarin_encoder=general_CoumarinType_Encoder
+    )
+    print(f"Predicted Viability with Dose {d} (auraptene) at time {t} is: {predicted_viability}");
