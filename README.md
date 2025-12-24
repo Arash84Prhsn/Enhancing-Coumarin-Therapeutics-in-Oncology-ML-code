@@ -1,1 +1,1 @@
-Please notice that the codebase for this paper is nor cleaned up yet and is work in progress
+Please notice that the codebase for this paper is not cleaned up yet and is a work in progress
