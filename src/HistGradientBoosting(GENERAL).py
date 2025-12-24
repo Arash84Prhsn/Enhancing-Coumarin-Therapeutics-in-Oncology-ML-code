@@ -252,13 +252,13 @@ predicted_viability = predict_viability(
     model=model,
     cancer_type="Colon",        # example cancer type
     coumarin_type="Galbanic Acid", # example coumarin
-    dose=225,                    # dose value
+    dose=183,                    # dose value
     time=72,                    # time value
     cancer_encoder=general_CancerType_Encoder,
     coumarin_encoder=general_CoumarinType_Encoder
 )
 
-# print(f"Predicted Viability: {predicted_viability:.2f}")
+print(f"Predicted Viability: {predicted_viability:.2f}")
 
 
 doses = [91, 75, 71];

@@ -240,17 +240,18 @@ def predict_viability(model, cancer_type, coumarin_type, dose, time,
         return predictions[0]
     return predictions
 
+dose = 183
 predicted_viability = predict_viability(
     model=model,
     cancer_type="Colon",        # example cancer type
     coumarin_type="Galbanic Acid", # example coumarin
-    dose=240,                   # dose value
+    dose=dose,                   # dose value
     time=72,                    # time value
     cancer_encoder=general_CancerType_Encoder,
     coumarin_encoder=general_CoumarinType_Encoder
 )
 
-print(f"Viability with a dose of 240 (galbanic acid) at 72h time point: {predicted_viability}")
+print(f"Viability with a dose of {dose} (galbanic acid) at 72h time point: {predicted_viability}")
 doses = [91, 75, 71];
 times = [24,48,72];
 
