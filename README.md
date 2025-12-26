@@ -7,3 +7,6 @@ code used for generating some figures.
 
 Everything is in the `main.ipynb`  notebook, but should the reviewer desire to use python files instead,
 they can check `src` folder for .py files.
+
+Should the reviewer intend to redo the gridSearching of each model, they can change the value of the
+`DO_GRIDSEARCH` variable to True in each file or notebook cell.
