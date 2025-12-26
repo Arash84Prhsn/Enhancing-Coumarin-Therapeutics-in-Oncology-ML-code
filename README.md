@@ -10,3 +10,14 @@ they can check `src` folder for .py files.
 
 Should the reviewer intend to redo the gridSearching of each model, they can change the value of the
 `DO_GRIDSEARCH` variable to `True` in each file or notebook cell.
+
+You will need the following python libraries installed on you environment:
+- sklearn
+- xgboost
+- pandas
+- numpy
+- os
+- sys
+- joblib
+- matplotlib
+- graphviz
