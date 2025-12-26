@@ -2,13 +2,11 @@ import pandas as pd;
 import numpy as np;
 from matplotlib import pyplot as plt;
 import matplotlib.cm as cm;
-import squarify;
+import os
 
 DATA = pd.read_csv("Total_Data.csv");
 
-print(DATA.columns);
-
-# ====<Donut chart for the coumarin distribution in the dataset>====
+# ====<Pie chart for the coumarin distribution in the dataset>====
 percentages = DATA["Coumarin Type"].value_counts(normalize=True) * 100;
 colors = cm.Blues(np.linspace(0.4, 0.9, len(percentages)))
 
@@ -26,24 +24,7 @@ ax.set_title("Coumarin distribution");
 ax.axis('equal');
 plt.show()
 
-# ====<chart for the Cancer Type distribution in the dataset>====
-
-# percentages = DATA["Cancer Type"].value_counts(normalize=True)*100;
-# colors = cm.winter(np.linspace(0.4, 0.9, len(percentages)))
-
-# fig_CancerType = plt.figure(figsize=(16,9));
-# ax = fig_CancerType.add_subplot();
-
-# bars = ax.bar(percentages.index, percentages.values, color = colors);
-
-# for bar in bars:
-#     height = bar.get_height()
-#     ax.text(bar.get_x() + bar.get_width()/2, height + 0.5, f'{height:.1f}%', ha='center')
-
-# ax.set_ylabel('Percentage (%)')
-# ax.set_title('Cancer Type Distribution')
-# plt.xticks(rotation=45)  # rotate labels if long
-# plt.tight_layout()
+# ====<Bar chart for the Cancer Type distribution in the dataset>====
 
 percentages = DATA["Cancer Type"].value_counts(normalize=True) * 100
 
@@ -75,6 +56,5 @@ for bar, value in zip(bars, percentages.values):
 plt.title("Cancer Type Distribution", fontsize=16)
 plt.xlabel("Cancer Type", fontsize=12)
 plt.ylabel("Percentage (%)", fontsize=12)
-# plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
 plt.show()
