@@ -1,38 +1,19 @@
-# THINGS TO MODIFY ARE :
-# 1. nameOfModel
-# 2. CURRENT_COUMARIN (in case we are doing training on separate coumarins, leave it as None if doing General training)
-# 3. SEPARATE_COUMARINS (True if we are doing training on separate coumarins)
-# 4. DO_GRIDSEARCH (True if we want to gridSearch, False we are doing training and predicting)
-# 5. X and y
-# 6. gs_Estimator (the estimator of the gridSearching)
-# 7. gs_parameters
-# 8. model (Must be given **params as argument
-# THIS SHOULD COVER DIFFERENT CASES AND DIFFERENT MODEL TRAININGS
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import (RandomForestRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor)
-from sklearn.svm import SVR;
+from sklearn.linear_model import ElasticNet
 from sklearn.model_selection import KFold, cross_val_score, GridSearchCV
 from sklearn.preprocessing import LabelEncoder
 from sklearn.mixture import GaussianMixture
-from sklearn.utils import all_estimators
-from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, r2_score, make_scorer
-from xgboost import XGBRegressor
+from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, make_scorer
 import os
 import sys
-import matplotlib.pyplot as plt
-import itertools
+from joblib import dump
 
-# Please Change the paths to match your own enviroment.
+# Please Change the paths to match your own enviroment.(in case of failure that is)
 DATA_PATH = 'Total_Data.csv'
 
-# Change model name here. MAKE THE NAME SAME AS THE CONSTRUCTOR(e.g. GradientBoostingRegressor, RandomForestRegressor, ...)
-# Also in case you're doing training on different coumarins, the name the model as the following example: "RandomForestRegressor(AURAPTENE)"
-CURRENT_MODEL = "SVR(GENERAL)";
-CURRENT_COUMARIN = None
-SEPARATE_COUMARINS = False
+CURRENT_MODEL = "ElasticNet";
 
-# RESULT_DIR = f'/TrainingResults/Models/{CURRENT_MODEL}/'
 RESULT_DIR = os.path.join(os.getcwd(), f'TrainingResults/Models/{CURRENT_MODEL}/')
 os.makedirs(RESULT_DIR, exist_ok=True)
 
@@ -44,14 +25,8 @@ allowed_times_NoAuraptene = [24, 48, 72]
 allowed_times_ForAuraptene = [24, 48, 72, 96]
 
 coumarins = ['Auraptene', 'Esculetin', 'Galbanic Acid', 'Umbelliprenin'];
-separateCoumarinDataDict = {"Auraptene" : None, "Esculetin" : None, 
-                            "Glabanic Acid" : None, "Umbelliprenin" : None};
 
-# ===========================================================================================================
-# Filtering the data using GMM for all Coumarins and the overall data itself and saving them in the dict
-# We filter out the unreliable Cancer Types
-# ===========================================================================================================
-
+# ====<Pre-Processing and GMM filtering>====
 
 #First filter the main data and save it in data.
 cancer_counts = mainData['Cancer Type'].value_counts().to_dict()
@@ -66,82 +41,44 @@ count_df['Reliability'] = count_df['Sample Count'].apply(
     lambda x: 'Reliable' if x >= threshold else 'Unreliable'
 )
 
-general_reliable_cancers = count_df[count_df['Reliability'] == 'Reliable']['Cancer Type'].tolist()
-general_reliable_data = mainData[mainData['Cancer Type'].isin(general_reliable_cancers)].copy()
+reliable_cancers = count_df[count_df['Reliability'] == 'Reliable']['Cancer Type'].tolist()
+reliable_data = mainData[mainData['Cancer Type'].isin(reliable_cancers)].copy()
 
-general_Data = general_reliable_data;
-general_CancerType_Encoder = LabelEncoder();
-general_CoumarinType_Encoder = LabelEncoder();
+data = reliable_data;
+CancerType_Encoder = LabelEncoder();
+CoumarinType_Encoder = LabelEncoder();
 
-general_Data['Coumarin Type'] = general_CoumarinType_Encoder.fit_transform(general_Data['Coumarin Type'])
-general_Data['Cancer Type'] = general_CancerType_Encoder.fit_transform(general_Data['Cancer Type'])
+data['Coumarin Type'] = CoumarinType_Encoder.fit_transform(data['Coumarin Type'])
+data['Cancer Type'] = CancerType_Encoder.fit_transform(data['Cancer Type'])
 
 # Filter out the unneeded times for the general data
-general_Data = general_Data[
-    ((general_Data['Coumarin Type'] == 'Auraptene') & general_Data['Time'].isin(allowed_times_ForAuraptene)) |
-    ((general_Data['Coumarin Type'] != 'Auraptene') & general_Data['Time'].isin(allowed_times_NoAuraptene))
+data = data[
+    ((data['Coumarin Type'] == 'Auraptene') & data['Time'].isin(allowed_times_ForAuraptene)) |
+    ((data['Coumarin Type'] != 'Auraptene') & data['Time'].isin(allowed_times_NoAuraptene))
 ]
 
-# We shall save each encoder of different coumarin type in case we need it in future for decoding
-Encoders = {"Auraptene" : None, "Esculetin" : None, 
-            "Glabanic Acid" : None, "Umbelliprenin" : None};
-
-# Now filter the data for seperate coumarins:===============================================================================================
-for coumarin in coumarins :
-
-    if coumarin != "Auraptene" :
-        coumarin_data = mainData[(mainData['Coumarin Type'] == coumarin) & (mainData['Time'].isin(allowed_times_NoAuraptene))].copy()
-    else :
-        coumarin_data = mainData[(mainData['Coumarin Type'] == coumarin) & (mainData['Time'].isin(allowed_times_ForAuraptene))].copy()
-
-    
-    coumarin_data.drop(columns=['Coumarin Type'], inplace=True);
-
-    cancer_counts = coumarin_data['Cancer Type'].value_counts().to_dict()
-    count_df = pd.DataFrame(list(cancer_counts.items()), columns=['Cancer Type', 'Sample Count'])
-
-    gmm.fit(count_df[['Sample Count']])
-    threshold = np.mean(gmm.means_.flatten())
-
-    count_df['Reliability'] = count_df['Sample Count'].apply(
-        lambda x: 'Reliable' if x >= threshold else 'Unreliable'
-    )
-
-    reliable_cancers = count_df[count_df['Reliability'] == 'Reliable']['Cancer Type'].tolist()
-    reliable_data = coumarin_data[coumarin_data['Cancer Type'].isin(reliable_cancers)].copy()
-
-    # Perfom transformation on the Cancer Type column
-    CancerEncoder = LabelEncoder();
-    reliable_data['Cancer Type'] = CancerEncoder.fit_transform(reliable_data['Cancer Type']);
-    
-    # Save the encoder in case we are gonna need it
-    Encoders[coumarin] = CancerEncoder;
-
-    # save the new coumarin data set
-    separateCoumarinDataDict[coumarin] = reliable_data;
-# Done looping through coumarins, we now have the data we need for each case================================================================
 
 # Wether we intend to do grid searching on the model or not is denoted the variable below:
 DO_GRIDSEARCH = False;
 
 # Set your X and y here, incase you want general training or training on a specific coumarin.
 
-X = general_Data[['Cancer Type', 'Coumarin Type', 'Coumarin Dose', 'Time']].copy(); # Order must be ['Cancer Type', 'Coumarin Type', 'Coumarin Dose', 'Time'](Coumarin type if only doing general training)
-y = general_Data['Viability'].copy(); # Viability column
+X = data[['Cancer Type', 'Coumarin Type', 'Coumarin Dose', 'Time']].copy(); # Order must be ['Cancer Type', 'Coumarin Type', 'Coumarin Dose', 'Time']
+y = data['Viability'].copy(); # Viability column
 
 # ====<BEGIN GRID SEARCHING>====
-# Grid searching is done here, the program stops after grid searching and the parameters and the scores are all saved in reports directory:
+# Grid searching is done here, the program stops after grid searching and the parameters and the scores are all saved in results directory:
 if DO_GRIDSEARCH :
     
-    gs_Estimator = SVR();
+    gs_Estimator = ElasticNet(random_state=42);
     
     # The parameters for the search.
     gs_parameters = {
-        "C": [0.1, 1, 10, 50, 100, 300],           
-        "gamma": ["scale", "auto", 0.1, 0.01, 0.001],
-        "epsilon": [0.01, 0.05, 0.1, 0.2],
-        "kernel": ["rbf"],                         
-        "shrinking": [True, False]
+         "alpha": [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0],
+        "l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9],
+        "fit_intercept": [True, False],
+        "max_iter": [1000, 5000],
+        "selection": ['cyclic', 'random']
     }
 
     kf = KFold(n_splits=5, shuffle=True, random_state=42);
@@ -174,8 +111,9 @@ if DO_GRIDSEARCH :
 # Get the model parameters post GridSearching
 params = pd.read_csv(f"{RESULT_DIR}Best_Paremeters/{CURRENT_MODEL}_GS_BestParameters.csv").iloc[0].to_dict();
 
-#Thanks chatgpt
+# Helper function to make sure the hyperParameters are read correctly.
 def sanitize_params(estimator, params):
+    
     """
     Cleans and fixes parameter types before passing them to sklearn models.
     - Converts floats representing ints into int
@@ -183,7 +121,6 @@ def sanitize_params(estimator, params):
     - Converts NaN to None
     - Removes unexpected params
     """
-    import inspect
 
     valid_params = estimator().get_params().keys()
     clean = {}
@@ -215,14 +152,11 @@ def sanitize_params(estimator, params):
     return clean
 
 params.pop("R2");
-params = sanitize_params(SVR, params=params)
-
-# params['max_depth'] = int(params['max_depth']);
-# params['n_estimators'] = int(params['n_estimators']);
-# params['random_state'] = 42
+params = sanitize_params(ElasticNet, params=params)
+params['random_state'] = 42
 
 # feed the params to model, with random_state as 42
-model = SVR(**params);
+model = ElasticNet(**params);
 
 # Start Evaluating Model performance. Get R2, MAE, RMSE
 cv_Scores = {"R2" : None, "MAE" : None, "MSE" : None, "MedAE" : None};
@@ -270,9 +204,7 @@ def predict_viability(model, cancer_type, coumarin_type, dose, time,
     Returns:
     - predicted viability (float or np.array)
     """
-    import numpy as np
-    import pandas as pd
-
+    
     # Ensure inputs are lists
     if not isinstance(cancer_type, list):
         cancer_type = [cancer_type]
@@ -306,11 +238,11 @@ predicted_viability = predict_viability(
     coumarin_type="Galbanic Acid", # example coumarin
     dose=183,                    # dose value
     time=72,                    # time value
-    cancer_encoder=general_CancerType_Encoder,
-    coumarin_encoder=general_CoumarinType_Encoder
+    cancer_encoder=CancerType_Encoder,
+    coumarin_encoder=CoumarinType_Encoder
 )
 
-print(f"{CURRENT_MODEL}Predicted Viability: {predicted_viability:.2f}")
+print(f"Viability with a dose of 183 (galbanic acid) at 72h time point: {predicted_viability}")
 doses = [91, 75, 71];
 times = [24,48,72];
 
@@ -321,12 +253,11 @@ for d, t in zip(doses, times) :
     coumarin_type="Auraptene", # example coumarin
     dose=d,                    # dose value
     time=t,                    # time value
-    cancer_encoder=general_CancerType_Encoder,
-    coumarin_encoder=general_CoumarinType_Encoder
+    cancer_encoder= CancerType_Encoder,
+    coumarin_encoder= CoumarinType_Encoder
     )
-    print(f"Predicted Viability with Dose {d} at time {t} is: {predicted_viability}");
+    print(f"Predicted Viability with Dose {d} (auraptene) at time {t} is: {predicted_viability}");
 
 
-from joblib import dump
 os.makedirs(f"{RESULT_DIR}/ModelFile/", exist_ok=True);
-dump(model, f"{RESULT_DIR}/ModelFile/{CURRENT_MODEL}.joblib")
+dump(model, f"{RESULT_DIR}/ModelFile/{CURRENT_MODEL}.joblib");

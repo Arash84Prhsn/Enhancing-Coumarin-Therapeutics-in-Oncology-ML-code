@@ -1,7 +1,5 @@
 from graphviz import Digraph
 
-# Simplified, high-level multi-model workflow
-
 dot = Digraph(
     format="png",
     graph_attr={
@@ -38,6 +36,6 @@ dot.edge("GridSearching", "Evaluation")
 dot.edge("Evaluation", "Train")
 
 # === Render ===
-output_path = "/home/arashp/Programming_Files/ML_Paper/Plots/workFlow"
+output_path = "Plots/Figure 2"
 dot.render(output_path, cleanup=True)
-print(f"Flowchart saved as {output_path}.png")
+print(f"Flowchart saved as {output_path}")
