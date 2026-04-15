@@ -2,84 +2,58 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import ElasticNet
 from sklearn.model_selection import KFold, cross_val_score, GridSearchCV
-from sklearn.preprocessing import LabelEncoder
-from sklearn.mixture import GaussianMixture
 from sklearn.metrics import mean_squared_error, mean_absolute_error, median_absolute_error, make_scorer
 import os
 import sys
-from joblib import dump
+from joblib import dump, load
 
 # Please Change the paths to match your own enviroment.(in case of failure that is)
-DATA_PATH = 'Total_Data.csv'
+DATA_PATH = 'Processed_data.csv'
 
 CURRENT_MODEL = "ElasticNet";
 
 RESULT_DIR = os.path.join(os.getcwd(), f'TrainingResults/Models/{CURRENT_MODEL}/')
 os.makedirs(RESULT_DIR, exist_ok=True)
 
-mainData = pd.read_csv(DATA_PATH);
-
-mainData = mainData[['Cancer Type', 'Coumarin Type', 'Coumarin Dose', 'Time', 'Viability']].dropna();
-
-allowed_times_NoAuraptene = [24, 48, 72]
-allowed_times_ForAuraptene = [24, 48, 72, 96]
-
-coumarins = ['Auraptene', 'Esculetin', 'Galbanic Acid', 'Umbelliprenin'];
-
-# ====<Pre-Processing and GMM filtering>====
-
-#First filter the main data and save it in data.
-cancer_counts = mainData['Cancer Type'].value_counts().to_dict()
-count_df = pd.DataFrame(list(cancer_counts.items()), columns=['Cancer Type', 'Sample Count'])
-
-#Initialize the gmm model
-gmm = GaussianMixture(n_components=2, random_state=42);
-gmm.fit(count_df[['Sample Count']])
-threshold = np.mean(gmm.means_.flatten())
-
-count_df['Reliability'] = count_df['Sample Count'].apply(
-    lambda x: 'Reliable' if x >= threshold else 'Unreliable'
-)
-
-reliable_cancers = count_df[count_df['Reliability'] == 'Reliable']['Cancer Type'].tolist()
-reliable_data = mainData[mainData['Cancer Type'].isin(reliable_cancers)].copy()
-
-data = reliable_data;
-CancerType_Encoder = LabelEncoder();
-CoumarinType_Encoder = LabelEncoder();
-
-data['Coumarin Type'] = CoumarinType_Encoder.fit_transform(data['Coumarin Type'])
-data['Cancer Type'] = CancerType_Encoder.fit_transform(data['Cancer Type'])
-
-# Filter out the unneeded times for the general data
-data = data[
-    ((data['Coumarin Type'] == 'Auraptene') & data['Time'].isin(allowed_times_ForAuraptene)) |
-    ((data['Coumarin Type'] != 'Auraptene') & data['Time'].isin(allowed_times_NoAuraptene))
-]
-
+data = pd.read_csv(DATA_PATH);
 
 # Wether we intend to do grid searching on the model or not is denoted the variable below:
 DO_GRIDSEARCH = False;
 
-# Set your X and y here, incase you want general training or training on a specific coumarin.
+# Prompt the user for grid searching:
+print("-------------------------------------------------------------------------------------------")
+state = input("Do you intend on performing grid searching?(Yes/No)   ")
+print("-------------------------------------------------------------------------------------------")
+state = state.lower()
+
+if (state == 'yes') :
+    DO_GRIDSEARCH = True;
+
+elif (state == 'no') :
+    DO_GRIDSEARCH = False;
+
+else :
+    print("invalid response. By default grid searching will NOT be done.")
+
 
 X = data[['Cancer Type', 'Coumarin Type', 'Coumarin Dose', 'Time']].copy(); # Order must be ['Cancer Type', 'Coumarin Type', 'Coumarin Dose', 'Time']
 y = data['Viability'].copy(); # Viability column
 
 # ====<BEGIN GRID SEARCHING>====
-# Grid searching is done here, the program stops after grid searching and the parameters and the scores are all saved in results directory:
+# Grid searching is done here, the program stops after grid searching and the parameters and the
+# scores are all saved in results directory:
 if DO_GRIDSEARCH :
     
     gs_Estimator = ElasticNet(random_state=42);
     
     # The parameters for the search.
     gs_parameters = {
-         "alpha": [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0],
-        "l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9],
-        "fit_intercept": [True, False],
-        "max_iter": [1000, 5000],
-        "selection": ['cyclic', 'random']
-    }
+        "alpha": [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0], # 6
+        "l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9],          # 5 
+        "fit_intercept": [True, False],                 # 2
+        "max_iter": [1000, 5000],                       # 2
+        "selection": ['cyclic', 'random']               # 2
+    }                                                   # 240 combinations
 
     kf = KFold(n_splits=5, shuffle=True, random_state=42);
     gs = GridSearchCV(estimator=gs_Estimator,
@@ -107,7 +81,7 @@ if DO_GRIDSEARCH :
     sys.exit(0);
 # ====<END OF GRID SEARCHING>====
 
-# ====<START EVALUATING MODEL>====
+# ====<START TRAINING AND EVALUATING MODEL>====
 # Get the model parameters post GridSearching
 params = pd.read_csv(f"{RESULT_DIR}Best_Paremeters/{CURRENT_MODEL}_GS_BestParameters.csv").iloc[0].to_dict();
 
@@ -230,7 +204,11 @@ def predict_viability(model, cancer_type, coumarin_type, dose, time,
     # If input was a single value, return single prediction
     if len(predictions) == 1:
         return predictions[0]
-    return predictions
+    return predictions;
+
+# load encoder objects using joblib.load
+CancerType_Encoder = load("Encoders/CancerEncoder.joblib");
+CoumarinType_Encoder = load("Encoders/CoumarinEncoder.joblib");
 
 predicted_viability = predict_viability(
     model=model,
